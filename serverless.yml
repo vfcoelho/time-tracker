@@ -1,0 +1,174 @@
+service: vfcoelho-${self:custom.repoName}
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-python-requirements
+  # - serverless-plugin-aws-alerts #TODO: add alarm integration with discord
+  - serverless-domain-manager
+  - serverless-apigateway-service-proxy
+
+custom:
+  repoName: time-tracker
+  resourcesName: ${self:service}-${self:provider.stage}
+  main:
+    domainName: vfcoelho.com.br
+    customDomainBasePath: ${self:custom.repoName}
+    #TODO add usage plans and api keys
+  
+
+  customDomain:
+    domainName: ${self:custom.${opt:configStage}.domainName}
+    stage: ${opt:stage}
+    basePath: ${self:custom.${opt:configStage}.customDomainBasePath}
+  apiGatewayServiceProxies:
+    - sqs:
+        path: /{producer}/hook
+        method: post
+        queueName: 
+          Fn::GetAtt: 
+            - PaymentEventsQueue
+            - QueueName
+        cors: true
+        request:
+          template:
+            application/json:
+              Fn::Join:
+                - ''
+                - 
+                  - 'QueueUrl='
+                  - Ref: PaymentEventsQueue
+                  - '&'
+                  - Action=SendMessage&
+                  - MessageBody=${file(deploy/api_mapping_template.vtl)}
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: ${opt:stage}
+  region: ${opt:region, 'us-east-1'}
+  versionFunctions: false
+  logs:
+    restApi: 
+      accessLogging: true
+      executionLogging: true
+      level: INFO
+      fullExecutionData: true
+  tracing:
+    apiGateway: true
+    lambda: true
+  environment:
+    stage: ${self:provider.stage}
+    configStage: ${opt:configStage}
+    region: ${self:provider.region}
+    repoName: ${self:service}
+            
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+        - ec2:CreateNetworkInterface
+        - ec2:DescribeNetworkInterfaces
+        - ec2:DeleteNetworkInterface
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+        - xray:GetSamplingRules
+        - xray:GetSamplingTargets
+        - xray:GetSamplingStatisticSummaries
+      Resource: '*'
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+        - secretsmanager:DescribeSecret
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+      Resource: '*'
+
+resources:
+  - 
+    Resources:
+
+      TimeEventQueueDeadLetter:
+        Type: AWS::SQS::Queue
+        Properties:
+          QueueName: ${self:custom.resourcesName}-time-event-dead-letter
+          MessageRetentionPeriod: 1209600
+
+      TimeEventQueue:
+        Type: AWS::SQS::Queue
+        DependsOn: TimeEventQueueDeadLetter
+        Properties:
+          QueueName: ${self:custom.resourcesName}-time-event
+          VisibilityTimeout: 300
+          RedrivePolicy:
+            deadLetterTargetArn: 
+              Fn::GetAtt:
+                - TimeEventQueueDeadLetter
+                - Arn
+            maxReceiveCount: 4
+     
+      CWAlarmSQSTimeEventQueueDeadLetterSent:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+          ActionsEnabled: true
+          # AlarmActions:
+          #   - ${self:custom.sns.alarmNotification}
+          AlarmName: ${self:custom.resourcesName}-time-event-dead-letter-sent
+          ComparisonOperator: GreaterThanOrEqualToThreshold
+          Dimensions:
+            - Name: QueueName
+              Value: ${self:custom.resourcesName}-time-event-dead-letter
+          EvaluationPeriods: 1
+          MetricName: NumberOfMessagesSent
+          Namespace: AWS/SQS
+          Period: 60
+          Statistic: Sum
+          Threshold: 1
+          TreatMissingData: notBreaching
+
+      CWAlarmSQSTimeEventQueueDeadLetterAge:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+          ActionsEnabled: true
+          # AlarmActions:
+          #   - ${self:custom.sns.alarmNotification}
+          AlarmName: ${self:custom.resourcesName}-time-event-dead-letter-age
+          ComparisonOperator: GreaterThanOrEqualToThreshold
+          Dimensions:
+            - Name: QueueName
+              Value: ${self:custom.resourcesName}-time-event-dead-letter
+          EvaluationPeriods: 30
+          MetricName: ApproximateAgeOfOldestMessage
+          Namespace: AWS/SQS
+          Period: 60
+          Statistic: Maximum
+          Threshold: 172800
+          TreatMissingData: notBreaching
+      
+
+functions:
+
+  timeEvent:
+    timeout: 300
+    handler: functions/events_handler.time_event
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - TimeEventQueue
+              - Arn
+          batchSize: 1
+  
+package:
+  excludeDevDependencies: true
+  exclude:
+    - .env/**
+    - tests/**
+    - deploy/**
+    - downloads/**
+    - operational_coding/**
+    - node_modules/**
+    - alembic_migrations/**
+    - docs/**
+
