@@ -1,25 +1,23 @@
 service: vfcoelho-${self:custom.repoName}
 
 plugins:
-  - serverless-pseudo-parameters
   - serverless-python-requirements
-  # - serverless-plugin-aws-alerts #TODO: add alarm integration with discord
   - serverless-domain-manager
   - serverless-apigateway-service-proxy
+  # - serverless-plugin-aws-alerts #TODO: add alarm integration with discord
 
 custom:
   repoName: time-tracker
   resourcesName: ${self:service}-${self:provider.stage}
   main:
-    domainName: vfcoelho.com.br
+    domainName: ${param:domain, env:CUSTOM_DOMAIN_NAME}
     customDomainBasePath: ${self:custom.repoName}
     #TODO add usage plans and api keys
-  
 
   customDomain:
-    domainName: ${self:custom.${opt:configStage}.domainName}
-    stage: ${opt:stage}
-    basePath: ${self:custom.${opt:configStage}.customDomainBasePath}
+    domainName: ${self:custom.${self:provider.environment.configStage}.domainName}
+    stage: ${self:provider.stage}
+    basePath: ${self:custom.${self:provider.environment.configStage}.customDomainBasePath}
   apiGatewayServiceProxies:
     - sqs:
         path: /{producer}/hook
@@ -44,7 +42,7 @@ custom:
 provider:
   name: aws
   runtime: python3.9
-  stage: ${opt:stage}
+  stage: ${opt:stage, env:STAGE, 'develop'}
   region: ${opt:region, 'us-east-1'}
   versionFunctions: false
   logs:
@@ -58,7 +56,7 @@ provider:
     lambda: true
   environment:
     stage: ${self:provider.stage}
-    configStage: ${opt:configStage}
+    configStage: ${param:configStage, env:CONFIG_STAGE, self:provider.stage}
     region: ${self:provider.region}
     repoName: ${self:service}
             
@@ -171,4 +169,5 @@ package:
     - node_modules/**
     - alembic_migrations/**
     - docs/**
+
 

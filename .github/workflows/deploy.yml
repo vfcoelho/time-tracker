@@ -1,6 +1,7 @@
 
 name: Deploy Environment
 on: 
+  workflow_dispatch:
   pull_request: # Note: By default, a workflow only runs when a pull_request's activity type is opened, synchronize, or reopened. To trigger workflows for more activity types, use the types keyword.
   push: 
     tags:
@@ -9,15 +10,55 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v3
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+        id: extract_branch
+      - name: Examples
         run: |
+          echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+          echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+          echo "🔎 The name of your branch is ${{ github.ref }} | ${GITHUB_REF##*/} and your repository is ${{ github.repository }}."
+          echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+          echo "🖥️ The workflow is now ready to test your code on the runner."
           ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm install
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install pipenv
+      # - name: serverless deploy
+        # uses: serverless/github-action@v3.1
+        # with:
+        #   args: deploy
+      - name: Setup Serverless
+        run: |
+          npm install -g serverless
+        #   echo ${CUSTOM_DOMAIN_NAME} | sed -e 's/\(.\)/\1 /g'
+        #   serverless config credentials --provider aws --key ${AWS_ACCESS_KEY_ID} --secret ${AWS_SECRET_ACCESS_KEY}
+        #   ls -al
+        #   cat .aws/config
+        # env:
+        #   AWS_ACCESS_KEY_ID: ${{ secrets.CUSTOM_DOMAIN_NAME }}
+        #   AWS_SECRET_ACCESS_KEY: ${{ secrets.CUSTOM_DOMAIN_NAME }}
+        #   CUSTOM_DOMAIN_NAME: coelho
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Serverless Deploy
+        run: serverless deploy --verbose
+        env:
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        #   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        #   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CUSTOM_DOMAIN_NAME: vfcoelho.com.br #${{ secrets.CUSTOM_DOMAIN_NAME }}
+          STAGE: ${{ steps.extract_branch.outputs.branch }}
+
+
 

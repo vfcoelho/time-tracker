@@ -1,0 +1,28 @@
+{
+  "name": "time-tracker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "dependencies": {
+    "serverless-apigateway-service-proxy": "^2.1.0",
+    "serverless-domain-manager": "^6.0.3",
+    "serverless-python-requirements": "^5.4.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vfcoelho/toggl-event-hook.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vfcoelho/toggl-event-hook/issues"
+  },
+  "homepage": "https://github.com/vfcoelho/toggl-event-hook#readme"
+}
