@@ -1,0 +1,13 @@
+
+name: Rollback Production
+on: 
+  delete:
+    types:
+      - tag
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Use checkout action to identify last valid tag and redeploy it
+        uses: actions/checkout@v3
+      - run: echo reuse/trigger deploy workflow for the last valid tag

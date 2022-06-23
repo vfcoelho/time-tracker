@@ -1,7 +1,12 @@
-name: GitHub Actions Demo
-on: [push]
+
+name: Deploy Environment
+on: 
+  pull_request: # Note: By default, a workflow only runs when a pull_request's activity type is opened, synchronize, or reopened. To trigger workflows for more activity types, use the types keyword.
+  push: 
+    tags:
+      - '*'
 jobs:
-  Explore-GitHub-Actions:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
@@ -15,3 +20,4 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
+

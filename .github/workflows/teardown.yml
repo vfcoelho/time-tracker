@@ -1,0 +1,14 @@
+
+name: Teardown Environment
+on:
+  pull_request:
+    types: 
+      - closed
+jobs:
+  pr_closed:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo PR #${{ github.event.number }} has been merged: ${{ github.event.pull_request.merged }} (true = merged | false = closed)
+        echo TEARDOWN ENVIRONMENT LOGIC HERE
+
