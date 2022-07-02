@@ -1,34 +1,49 @@
 service: vfcoelho-${self:custom.repoName}
 
 plugins:
-  - serverless-pseudo-parameters
   - serverless-python-requirements
-  # - serverless-plugin-aws-alerts #TODO: add alarm integration with discord
   - serverless-domain-manager
   - serverless-apigateway-service-proxy
+  # - serverless-plugin-aws-alerts #TODO: add alarm integration with discord
 
 custom:
   repoName: time-tracker
   resourcesName: ${self:service}-${self:provider.stage}
+  configFile: ${file(./.config/sls.${self:provider.environment.configStage}.yml)}
+  configStage: ${param:configStage, env:CONFIG_STAGE, self:provider.stage}
   main:
-    domainName: vfcoelho.com.br
+    domainName: ${self:custom.configFile.domain, env:CUSTOM_DOMAIN_NAME}
     customDomainBasePath: ${self:custom.repoName}
-    #TODO add usage plans and api keys
+    apiKeys:
+      - UNT:
+          - 
+            name: ${self:custom.resourcesName}-UNT-UNG-dummy
+            value: ${self:custom.configFile.UNTUNGDummyKey}
+    usagePlan:
+      - UNT:
+          throttle:
+            burstLimit: 200
+            rateLimit: 100
+          quota:
+            limit: 5
+            offset: 2
+            period: DAY
   
 
   customDomain:
-    domainName: ${self:custom.${opt:configStage}.domainName}
-    stage: ${opt:stage}
-    basePath: ${self:custom.${opt:configStage}.customDomainBasePath}
+    domainName: ${self:custom.${self:provider.environment.configStage}.domainName}
+    stage: ${self:provider.stage}
+    basePath: ${self:custom.${self:provider.environment.configStage}.customDomainBasePath}
   apiGatewayServiceProxies:
     - sqs:
         path: /{producer}/hook
         method: post
         queueName: 
           Fn::GetAtt: 
-            - PaymentEventsQueue
+            - TimeEventQueue
             - QueueName
         cors: true
+        private: true
         request:
           template:
             application/json:
@@ -36,7 +51,7 @@ custom:
                 - ''
                 - 
                   - 'QueueUrl='
-                  - Ref: PaymentEventsQueue
+                  - Ref: TimeEventQueue
                   - '&'
                   - Action=SendMessage&
                   - MessageBody=${file(deploy/api_mapping_template.vtl)}
@@ -44,21 +59,31 @@ custom:
 provider:
   name: aws
   runtime: python3.9
-  stage: ${opt:stage}
+  stage: ${opt:stage, env:STAGE, 'develop'}
   region: ${opt:region, 'us-east-1'}
   versionFunctions: false
+  apiKeys: #${self:custom.${self:custom.configStage}.apiKeys}
+    - name: ${self:custom.resourcesName}-UNT-UNG-dummy
+      value: ${self:custom.configFile.UNTUNGDummyKey}
+  apiGateway:
+    apiKeySourceType: HEADER
+    # usagePlan: #${self:custom.${self:custom.configStage}.usagePlan}
+    #   quota:
+    #     limit: 5
+    #     offset: 2
+    #     period: DAY
+    #   throttle:
+    #     burstLimit: 200
+    #     rateLimit: 100
   logs:
     restApi: 
-      accessLogging: true
-      executionLogging: true
       level: INFO
-      fullExecutionData: true
-  tracing:
-    apiGateway: true
-    lambda: true
+  # tracing:
+  #   apiGateway: true
+  #   lambda: true
   environment:
     stage: ${self:provider.stage}
-    configStage: ${opt:configStage}
+    configStage: ${self:custom.configStage}
     region: ${self:provider.region}
     repoName: ${self:service}
             
@@ -171,4 +196,5 @@ package:
     - node_modules/**
     - alembic_migrations/**
     - docs/**
+
 

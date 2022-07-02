@@ -19,6 +19,7 @@ node_modules/
 Pipfile.lock
 requirements.txt
 include/
+.config/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
