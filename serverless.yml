@@ -14,20 +14,20 @@ custom:
   main:
     domainName: ${self:custom.configFile.domain, env:CUSTOM_DOMAIN_NAME}
     customDomainBasePath: ${self:custom.repoName}
-    apiKeys:
-      - UNT:
-          - 
-            name: ${self:custom.resourcesName}-UNT-UNG-dummy
-            value: ${self:custom.configFile.UNTUNGDummyKey}
-    usagePlan:
-      - UNT:
-          throttle:
-            burstLimit: 200
-            rateLimit: 100
-          quota:
-            limit: 5
-            offset: 2
-            period: DAY
+    # apiKeys:
+    #   - UNT:
+    #       - 
+    #         name: ${self:custom.resourcesName}-UNT-UNG-dummy
+    #         value: ${self:custom.configFile.UNTUNGDummyKey}
+    # usagePlan:
+    #   - UNT:
+    #       throttle:
+    #         burstLimit: 200
+    #         rateLimit: 100
+    #       quota:
+    #         limit: 5
+    #         offset: 2
+    #         period: DAY
   
 
   customDomain:
@@ -62,12 +62,12 @@ provider:
   stage: ${opt:stage, env:STAGE, 'develop'}
   region: ${opt:region, 'us-east-1'}
   versionFunctions: false
-  apiKeys: #${self:custom.${self:custom.configStage}.apiKeys}
-    - name: ${self:custom.resourcesName}-UNT-UNG-dummy
-      value: ${self:custom.configFile.UNTUNGDummyKey}
-  apiGateway:
-    apiKeySourceType: HEADER
-    # usagePlan: #${self:custom.${self:custom.configStage}.usagePlan}
+  # apiGateway:
+    # apiKeySourceType: HEADER
+    # apiKeys: ${self:custom.${self:custom.configStage}.apiKeys}
+      # - name: ${self:custom.resourcesName}-UNT-UNG-dummy
+      #   value: ${self:custom.configFile.UNTUNGDummyKey}
+    # usagePlan: ${self:custom.${self:custom.configStage}.usagePlan}
     #   quota:
     #     limit: 5
     #     offset: 2
@@ -178,6 +178,11 @@ functions:
     timeout: 300
     handler: functions/events_handler.time_event
     events:
+      # - http:
+      #     path: /{producer}/hook
+      #     method: post
+      #     cors: true
+      #     private: true
       - sqs:
           arn:
             Fn::GetAtt:
