@@ -1,0 +1,12 @@
+{
+    "time_tracker": {
+		"vendor": "toggl",
+        "auth": {
+            "basic": ["username","password"]
+        },
+		"base_url": "https://track.toggl.com/webhooks/api/v1",
+		"endpoints": {
+			
+		}
+	}
+}
